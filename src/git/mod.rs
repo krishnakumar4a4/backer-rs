@@ -1,7 +1,5 @@
 use git2::{Commit, ObjectType, Repository, Index, Error, Signature, Oid};
-use git2::Status;
 use git2::IndexAddOption;
-use git2::IndexMatchedPath;
 use std::path::Path;
 
 pub struct Repo<'a> {
@@ -30,87 +28,15 @@ impl<'a> Repo<'a> {
     }
 }
 
-
-pub fn add_and_commit(repo: &Repo, file_paths: Vec<String>, message: &str) -> Result<Oid, Error> {
-    let repository = &repo.repo;
-    let mut index = repository.index()?;
-    for path in file_paths {
-        match index.add_path(Path::new(&path)) {
-            Ok(()) => {
-                println!("Succefully added path {}", path);
-            }
-            Err(e) => {
-                println!("Error while adding path {}",e.message());
-            }
-        }
-    }
-    index.write();
-    let oid = index.write_tree()?;
-    println!("oid {:?}",oid);
-    let signature = Signature::now("Krishna Kumar Thokala", "krishna.thokala2010@gmail.com")?;
-    match repo.find_last_commit() {
-        Ok(parent_commit) => {
-            println!("last commit {:?}",&parent_commit.id());
-            match repository.find_tree(oid) {
-                Ok(tree) => {
-                    repository.commit(Some("HEAD"), //  point HEAD to our new commit
-                                      &signature, // author
-                                      &signature, // committer
-                                      message, // commit message
-                                      &tree, // tree
-                                      &[&parent_commit]) // parents
-                },
-                Err(e) => {
-                    println!("Error while finding tree with oid, {}",e.message());
-                    Err(e)
-                }
-            }
-        }
-        Err(e) => {
-            println!("Error while finding the last commit, {}",e);
-            match repository.find_tree(oid) {
-                Ok(tree) => {
-                    repository.commit(Some("HEAD"), //  point HEAD to our new commit
-                                      &signature, // author
-                                      &signature, // committer
-                                      message, // commit message
-                                      &tree, // tree
-                                      &[]) // parents
-                },
-                Err(e) => {
-                    println!("Error while finding tree with oid, {}",e.message());
-                    Err(e)
-                }
-            }
-        }
-    }
-}
-
-
-pub fn add_all_and_commit(repo: &Repo, message: &str) -> Result<Oid, Error> {
+pub fn add_all_and_commit(repo: &Repo, message: &str, sign_name: &str, sign_email: &str) -> Result<Oid, Error> {
     let repository = &repo.repo;
     let mut index:Index = repository.index()?;
-    let callback = &mut |path: &Path, _matched_spec: &[u8]| -> i32 {
-        let status = repository.status_file(path).unwrap();
-
-        let ret = if status.contains(Status::WT_MODIFIED) {
-            println!("modified '{}'", path.display());
-            0
-        }
-        else if status.contains(Status::WT_NEW) {
-            println!("add '{}'", path.display());
-            0
-        } else {
-            1
-        };
-        ret
-    };
 
     index.add_all(["*"].into_iter(),IndexAddOption::DEFAULT , Some(&mut (|a, _b| { println!("path {}",a.to_str().unwrap()); 0 })));
     index.write();
     let oid = index.write_tree()?;
     println!("oid {:?}",oid);
-    let signature = Signature::now("Krishna Kumar Thokala", "krishna.thokala2010@gmail.com")?;
+    let signature = Signature::now(&sign_name, &sign_email)?;
     match repo.find_last_commit() {
         Ok(parent_commit) => {
             println!("last commit {:?}",&parent_commit.id());
