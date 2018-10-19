@@ -5,3 +5,7 @@ authors = ["Krishna Kumar <krishnak@thoughtworks.com>"]
 
 [dependencies]
 git2 = "0.7.5"
+notify = "4.0.0"
+chrono = "0.4"
+timer = "0.2.0"
+clap = "2.32.0"
