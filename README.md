@@ -8,6 +8,10 @@ Based on cross-platform file notification library.
 ## Example use cases:
 - Can be pointed to storage locations of note applications like boostnote
 
+## Build
+- ``cargo build --release``
+- ``backer-rs`` is the executable generated in ``target/release/`` folder.
+
 ### Usage
 
 ``backer-rs -p <path to the folder to backup> -f 2 -c 300 -n krishnakumar -e <email id of author> -d "Commiting all changes"``
