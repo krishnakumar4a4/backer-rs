@@ -1,0 +1,24 @@
+#!/bin/bash
+
+echo "Exec: Checking dependencies"
+
+if [[ -f $(which systemctl) ]];
+then
+	echo "Exec: Checking systemd: yes"
+else
+	echo "Exec: Checking systemd: no"
+	exit 1
+fi
+echo "Exec: Checking required shared libraries"
+sudo objdump -p ../usr/local/bin/backer-rs|\
+	grep NEEDED|awk '{print $2}'|\
+	while read line;
+	do 
+		ldconfig -p|grep -q $line
+		if [[ $? -ne 0 ]];
+		then 
+			echo "Error: $line doesn't exist, install it"
+			exit 1
+		fi
+	done
+echo "Exec: All required shared libraries available"

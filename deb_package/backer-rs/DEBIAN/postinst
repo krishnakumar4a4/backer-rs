@@ -1,0 +1,8 @@
+#!/bin/bash
+
+echo "Exec: Enabling backer-rs as systemd service"
+systemctl enable backer-rs
+echo ""
+echo "Attention: Steps to follow"
+echo "1. configure backer-rs parameters in \"/etc/systemd/system/backer-rs.service\" file"
+echo "2. Run \"sudo systemctl start backer-rs\""

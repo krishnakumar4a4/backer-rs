@@ -1,0 +1,14 @@
+[Unit]
+Description=backer-rs
+
+[Service]
+Type=forking
+# ExecStart=/usr/local/bin/backer-rs -p <path to the folder to backup> -f 2 -c 300 -n krishnakumar -e <email id of author> -d "Commiting all changes"
+# ExecStart=/usr/local/bin/backer-rs -p <path to the folder to backup> -n krishnakumar -e <email id of author>
+# Configure the below command as mentioned in the sample above
+ExecStart=/usr/local/bin/backer-rs
+Restart=on-failure
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
