@@ -26,3 +26,11 @@ Based on cross-platform file notification library.
 - Default file monitoring time is `2` seconds
 - Default wait time to commit is `5` seconds
 - Default commit message is `Committed all changes`
+
+### Usage with auto push feature using ssh
+
+``backer-rs --path <path to the folder to backup> --semail <email id of author> --sname krishnakumar -u git@github.com:krishnakumar4a4/notes.git -k id_rsa_backer_rs``
+- `-k` or `--pkey` local path to ssh private key for which corresponding public key is configured.
+- `-u` or `--remoteurl` remote upstream url to which the commits are pushed
+
+
