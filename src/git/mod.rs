@@ -32,7 +32,8 @@ pub fn add_all_and_commit(repo: &Repo, message: &str, sign_name: &str, sign_emai
     let repository = &repo.repo;
     let mut index:Index = repository.index()?;
 
-    index.add_all(["*"].into_iter(),IndexAddOption::DEFAULT , Some(&mut (|a, _b| { println!("path {}",a.to_str().unwrap()); 0 }))).unwrap();
+    index.add_all(["*"].iter(),IndexAddOption::DEFAULT , 
+    Some(&mut (|a, _b| { println!("path {}",a.to_str().unwrap()); 0 })))?;
     index.write().unwrap();
     let oid = index.write_tree()?;
     println!("oid {:?}",oid);
@@ -75,31 +76,28 @@ pub fn add_all_and_commit(repo: &Repo, message: &str, sign_name: &str, sign_emai
     }
 }
 
-/// Unlike regular "git init", this example shows how to create an initial empty
+/// Unlike regular "git init", this shows how to create an initial empty
 /// commit in the repository. This is the helper function that does that.
 pub fn create_initial_commit(repo: &Repository) -> Result<(), Error> {
     // First use the config to initialize a commit signature for the user.
-    let sig = try!(repo.signature());
+    let sig = repo.signature()?;
 
     // Now let's create an empty tree for this commit
     let tree_id = {
-        let mut index = try!(repo.index());
-
-        // Outside of this example, you could call index.add_path()
-        // here to put actual files into the index. For our purposes, we'll
-        // leave it empty for now.
-
-        try!(index.write_tree())
+        let mut index = repo.index()?;
+        index.write_tree()?
     };
 
-    let tree = try!(repo.find_tree(tree_id));
+    let tree = repo.find_tree(tree_id)?;
 
     // Ready to create the initial commit.
     //
     // Normally creating a commit would involve looking up the current HEAD
     // commit and making that be the parent of the initial commit, but here this
     // is the first commit so there will be no parent.
-    try!(repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[]));
-
-    Ok(())
+    if let Err(e) = repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[]) {
+        Err(e)
+    } else {
+        Ok(())
+    }
 }

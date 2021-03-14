@@ -3,8 +3,8 @@ extern crate notify;
 
 mod git;
 
-use notify::{RecommendedWatcher, Watcher, RecursiveMode};
-use std::sync::mpsc::channel;
+use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
+use std::sync::mpsc::{Sender, channel};
 use std::time::Duration;
 
 extern crate timer;
@@ -78,18 +78,18 @@ fn main() {
     };
 
     let config = BackerConfig {
-        repo_path: repo_path,
-        file_monitor_freq: file_monitor_freq,
-        commit_delay: commit_delay,
-        sign_name: sign_name,
-        sign_email: sign_email,
-        default_commit_msg: default_commit_msg,
+        repo_path,
+        file_monitor_freq,
+        commit_delay,
+        sign_name,
+        sign_email,
+        default_commit_msg,
         should_push_to_remote: should_push,
-        ssh_private_key: ssh_private_key
+        ssh_private_key
     };
 
     if let Err(e) = watch(config) {
-        println!("Error initializing inotify: {:?}", e)
+        panic!("Error initializing inotify for file watches: {:?}", e)
     }
 }
 
@@ -110,7 +110,7 @@ fn init_repo(repo_path: String, remote_url: Option<&str>) {
         None => ()
     };
     // Ignore the result if it can't create the first commit
-    git::create_initial_commit(repository);
+    let _ = git::create_initial_commit(repository);
 }
 
 fn add_all_changed(repo_path: &str, default_commit_msg: &str, sign_name: &str, sign_email: &str, should_push: bool, ssh_pkey: &str) {
@@ -164,20 +164,14 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
     let ssh_pkey = config.ssh_private_key;
 
     let file_monitor_freq: u64 = config.file_monitor_freq.parse().unwrap();
-    // Automatically select the best implementation for your platform.
-    // You can also access each implementation directly e.g. INotifyWatcher.
-    let mut watcher: RecommendedWatcher = try!(Watcher::new(tx, Duration::from_secs(file_monitor_freq)));
-
-    // Add a path to be watched. All files and directories at that path and
-    // below will be monitored for changes.
-    try!(watcher.watch(&repo_path, RecursiveMode::NonRecursive));
+    init_file_watcher(tx, file_monitor_freq, &repo_path)?;
 
     let time_done = Arc::new(AtomicBool::new(false));
     let timer = timer::Timer::new();
     let commit_delay: i64 = config.commit_delay.parse().unwrap();
     let time_done1 = time_done.clone();
     let callback = move || {
-        println!("Now commiting changes");
+        println!("Commiting changes now");
         add_all_changed(&repo_path, &default_commit_msg, &sign_name, &sign_email, should_push, &ssh_pkey);
         time_done1.store(false, Ordering::Relaxed);
     };
@@ -196,4 +190,14 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
             Err(e) => println!("watch error: {:?}", e),
         }
     }
+}
+
+fn init_file_watcher(tx: Sender<DebouncedEvent>, file_monitor_frequency: u64, repo_path: &str) -> notify::Result<()>{
+    // Automatically select the best implementation for your platform.
+    // You can also access each implementation directly e.g. INotifyWatcher.
+    let mut watcher: RecommendedWatcher = Watcher::new(tx, Duration::from_secs(file_monitor_frequency))?;
+
+    // Add a path to be watched. All files and directories at that path and
+    // below will be monitored for changes.
+    watcher.watch(&repo_path, RecursiveMode::NonRecursive)
 }
