@@ -32,8 +32,7 @@ pub fn add_all_and_commit(repo: &Repo, message: &str, sign_name: &str, sign_emai
     let repository = &repo.repo;
     let mut index:Index = repository.index()?;
 
-    index.add_all(["*"].iter(),IndexAddOption::DEFAULT , 
-    Some(&mut (|a, _b| { println!("path {}",a.to_str().unwrap()); 0 })))?;
+    index.add_all(["*"].iter(),IndexAddOption::DEFAULT , Some(&mut (|a, _b| { println!("path {}",a.to_str().unwrap()); 0 })))?;
     index.write().unwrap();
     let oid = index.write_tree()?;
     println!("oid {:?}",oid);

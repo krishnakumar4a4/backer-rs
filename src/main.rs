@@ -3,8 +3,8 @@ extern crate notify;
 
 mod git;
 
-use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
-use std::sync::mpsc::{Sender, channel};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use std::sync::mpsc::{channel};
 use std::time::Duration;
 
 extern crate timer;
@@ -164,7 +164,13 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
     let ssh_pkey = config.ssh_private_key;
 
     let file_monitor_freq: u64 = config.file_monitor_freq.parse().unwrap();
-    init_file_watcher(tx, file_monitor_freq, &repo_path)?;
+    // Automatically select the best implementation for your platform.
+    // You can also access each implementation directly e.g. INotifyWatcher.
+    let mut watcher: RecommendedWatcher = Watcher::new(tx, Duration::from_secs(file_monitor_freq))?;
+
+    // Add a path to be watched. All files and directories at that path and
+    // below will be monitored for changes.
+    watcher.watch(&repo_path, RecursiveMode::NonRecursive)?;
 
     let time_done = Arc::new(AtomicBool::new(false));
     let timer = timer::Timer::new();
@@ -190,14 +196,4 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
             Err(e) => println!("watch error: {:?}", e),
         }
     }
-}
-
-fn init_file_watcher(tx: Sender<DebouncedEvent>, file_monitor_frequency: u64, repo_path: &str) -> notify::Result<()>{
-    // Automatically select the best implementation for your platform.
-    // You can also access each implementation directly e.g. INotifyWatcher.
-    let mut watcher: RecommendedWatcher = Watcher::new(tx, Duration::from_secs(file_monitor_frequency))?;
-
-    // Add a path to be watched. All files and directories at that path and
-    // below will be monitored for changes.
-    watcher.watch(&repo_path, RecursiveMode::NonRecursive)
 }
