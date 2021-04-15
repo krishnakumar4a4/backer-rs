@@ -1,2 +1,6 @@
 target/
 test_repo/
+.obsidian
+*.plist
+*.plist.local
+*.log

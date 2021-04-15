@@ -33,4 +33,15 @@ Based on cross-platform file notification library.
 - `-k` or `--pkey` local path to ssh private key for which corresponding public key is configured.
 - `-u` or `--remoteurl` remote upstream url to which the commits are pushed
 
+### Install as service in mac
+- Create service binary in release mode `make release`
 
+- Install binary as mac service
+
+```shell
+sudo REPO_PATH="<Path to repo, same as -p argument>" SIGN_EMAIL="<Email for signature, same as -e argument>" SIGN_NAME="<Author name for signature, same as -n argument>" REPO_REMOTE="<Remote upstream URL, same as -u argument>" SSH_KEY_PATH="<Path to SSH private key, same as -k argument>" INFO_LOG_PATH="/<Path for info log>/info.log" ERROR_LOG_PATH="/<Path for error log>/error.log" make install-mac
+```
+
+### Stop and Uninstall mac svc
+- Stop the service `sudo make stop-svc`
+- Uninstall the service `sudo make uninstall-mac`

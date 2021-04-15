@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>backer-rs</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/krishnak/work/tinkering/backer-rs/target/release/backer-rs</string>
+        <string>--path</string>
+        <string>$REPO_PATH</string>
+        <string>--semail</string>
+        <string>$SIGN_EMAIL</string>
+        <string>--sname</string>
+        <string>$SIGN_NAME</string>
+        <string>-u</string>
+        <string>$REPO_REMOTE</string>
+        <string>-k</string>
+        <string>$SSH_KEY_PATH</string>
+    </array>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>$INFO_LOG_PATH</string>
+    <key>StandardErrorPath</key>
+    <string>$ERROR_LOG_PATH</string>
+</dict>
+</plist>
