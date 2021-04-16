@@ -2,6 +2,8 @@ use git2::{Commit, ObjectType, Repository, Index, Error, Signature, Oid};
 use git2::IndexAddOption;
 use std::path::Path;
 
+use log::{error, trace};
+
 pub struct Repo<'a> {
     pub repo_path: &'a str,
     pub repo: Repository,
@@ -32,14 +34,14 @@ pub fn add_all_and_commit(repo: &Repo, message: &str, sign_name: &str, sign_emai
     let repository = &repo.repo;
     let mut index:Index = repository.index()?;
 
-    index.add_all(["*"].iter(),IndexAddOption::DEFAULT , Some(&mut (|a, _b| { println!("path {}",a.to_str().unwrap()); 0 })))?;
+    index.add_all(["*"].iter(),IndexAddOption::DEFAULT , Some(&mut (|a, _b| { trace!("path {}",a.to_str().unwrap()); 0 })))?;
     index.write().unwrap();
     let oid = index.write_tree()?;
-    println!("oid {:?}",oid);
+    trace!("oid {:?}",oid);
     let signature = Signature::now(&sign_name, &sign_email)?;
     match repo.find_last_commit() {
         Ok(parent_commit) => {
-            println!("last commit {:?}",&parent_commit.id());
+            trace!("last commit {:?}",&parent_commit.id());
             match repository.find_tree(oid) {
                 Ok(tree) => {
                     repository.commit(Some("HEAD"), //  point HEAD to our new commit
@@ -50,13 +52,13 @@ pub fn add_all_and_commit(repo: &Repo, message: &str, sign_name: &str, sign_emai
                                       &[&parent_commit]) // parents
                 },
                 Err(e) => {
-                    println!("Error while finding tree with oid, {}",e.message());
+                    error!("Error while finding tree with oid, {}",e.message());
                     Err(e)
                 }
             }
         }
         Err(e) => {
-            println!("Error while finding the last commit, {}",e);
+            error!("Error while finding the last commit, {}",e);
             match repository.find_tree(oid) {
                 Ok(tree) => {
                     repository.commit(Some("HEAD"), //  point HEAD to our new commit
@@ -67,7 +69,7 @@ pub fn add_all_and_commit(repo: &Repo, message: &str, sign_name: &str, sign_emai
                                       &[]) // parents
                 },
                 Err(e) => {
-                    println!("Error while finding tree with oid, {}",e.message());
+                    error!("Error while finding tree with oid, {}",e.message());
                     Err(e)
                 }
             }

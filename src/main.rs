@@ -20,6 +20,15 @@ use clap::{Arg, App};
 use git2::{PushOptions, ProxyOptions, RemoteCallbacks, Cred, CredentialType};
 use std::path::Path;
 
+extern crate notify_rust;
+use notify_rust::{Notification};
+
+extern crate log;
+use log::{error, info, trace, warn};
+
+extern crate simple_logger;
+use simple_logger::SimpleLogger;
+
 pub struct BackerConfig {
     pub repo_path: String,
     pub file_monitor_freq: String,
@@ -39,6 +48,11 @@ fn main() {
     // Signature name
     // Signature email
     // remote ssh url to push the code to
+
+    if let Err(e) = SimpleLogger::new().init() {
+        show_desktop_notification(&format!("Error initializing terminal logger, {:?}", e), notify_rust::Timeout::Milliseconds(5000));
+        panic!("Error initializing terminal logger: {:?}", e);
+    }
 
     let matches = App::new("Backer").version("1.0").author("Krishna Kumar Thokala")
         .about("A git based backup tool")
@@ -66,6 +80,8 @@ fn main() {
     let should_push = match remote_url {
         Some(url) => {
             if ssh_private_key == "" {
+                show_desktop_notification("Missing private key parameter for the repository to enable auto push, Please check logs", notify_rust::Timeout::Milliseconds(1000));
+                error!("Missing private key parameter for the repository to enable auto push");
                 panic!("Missing private key parameter for the repository to enable auto push");
             }
             init_repo(repo_path.clone(), Some(url));
@@ -89,6 +105,8 @@ fn main() {
     };
 
     if let Err(e) = watch(config) {
+        show_desktop_notification("Error initializing inotify for file watches, Please check logs", notify_rust::Timeout::Milliseconds(1000));
+        error!("Error initializing inotify for file watches: {:?}", e);
         panic!("Error initializing inotify for file watches: {:?}", e)
     }
 }
@@ -100,10 +118,10 @@ fn init_repo(repo_path: String, remote_url: Option<&str>) {
         Some(url) => {
             match repo.repo.remote("origin",url) {
                 Ok(_) => {
-                    println!("Added remote {:?}", repo.repo.remotes().unwrap().get(0));
+                    info!("Added remote {:?}", repo.repo.remotes().unwrap().get(0));
                 }
                 Err(e) => {
-                    println!("Tried to add remote {:?}", e.message());
+                    info!("Tried to add remote {:?}", e.message());
                 }
             };
         }
@@ -117,7 +135,7 @@ fn add_all_changed(repo_path: &str, default_commit_msg: &str, sign_name: &str, s
     let mut repo = git::Repo::open(&repo_path);
     match git::add_all_and_commit(&mut repo, &default_commit_msg, &sign_name, &sign_email) {
         Ok(oid) => {
-            println!("Commit id {}",oid);
+            trace!("Commit id {}",oid);
             if should_push {
                 let callback = move |_url: &str, _uname: Option<&str>, _ctype: CredentialType| {
                     Cred::ssh_key("git", None, Path::new(ssh_pkey), None)
@@ -128,27 +146,30 @@ fn add_all_changed(repo_path: &str, default_commit_msg: &str, sign_name: &str, s
                         rcb.credentials(&callback);
                         let mut po = PushOptions::default();
                         po.remote_callbacks(rcb).proxy_options(ProxyOptions::new());
-                        println!("About to push commits to remote");
+                        trace!("About to push commits to remote");
 
                         // Push to remote refspec
                         match remote.push(&["refs/heads/master"], Some(&mut po)) {
                             Ok(_) => {
-                                println!("Pushed the commits successfully to remote");
+                                info!("Pushed the commits successfully to remote");
                             }
                             Err(e) => {
-                                println!("Failed to push commits to remote, {}", e);
+                                show_desktop_notification("Failed to push commits to remote, Please check logs", notify_rust::Timeout::Milliseconds(1000));
+                                error!("Failed to push commits to remote, {}", e);
                             }
                         };
-                        println!("Push done");
+                        trace!("Push done");
                     }
                     Err(e) => {
-                        println!("Could not find a remote to push, error {:?}", e);
+                        show_desktop_notification("Could not find a remote to push, Please check logs", notify_rust::Timeout::Milliseconds(1000));
+                        error!("Could not find a remote to push, error {:?}", e);
                     }
                 }
             }
         },
         Err(e) => {
-            println!("Unable to commit, reason {}",e.message());
+            show_desktop_notification("Unable to perform commit of local changes, Please check logs", notify_rust::Timeout::Milliseconds(1000));
+            error!("Unable to commit, reason {}",e.message());
         }
     }
 }
@@ -177,7 +198,7 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
     let commit_delay: i64 = config.commit_delay.parse().unwrap();
     let time_done1 = time_done.clone();
     let callback = move || {
-        println!("Commiting changes now");
+        trace!("Commiting changes now");
         add_all_changed(&repo_path, &default_commit_msg, &sign_name, &sign_email, should_push, &ssh_pkey);
         time_done1.store(false, Ordering::Relaxed);
     };
@@ -185,15 +206,25 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
     loop {
         match rx.recv() {
             Ok(event) => {
-                println!("{:?}", event);
+                trace!("{:?}", event);
                 if ! time_done.load(Ordering::Relaxed) {
                     //let time_done1 = time_done.clone();
                     _guard = Some(timer.schedule_with_delay(chrono::Duration::seconds(commit_delay), callback.clone()));
-                    println!("Commit timer started, will be committed in {} seconds", commit_delay);
+                    trace!("Commit timer started, will be committed in {} seconds", commit_delay);
                     time_done.store(true, Ordering::Relaxed);
                 }
             },
-            Err(e) => println!("watch error: {:?}", e),
+            Err(e) => error!("watch error: {:?}", e),
         }
+    }
+}
+
+fn show_desktop_notification(body: &str, timeout: notify_rust::Timeout) {
+    if let Err(e) = Notification::new()
+    .summary("Category: backer-rs")
+    .body(body)
+    .timeout(timeout) // this however is
+    .show() {
+        warn!("Error showing desktop notification - Category: backer-rs, body: {}, timeout: {:?} to user, error: {:?}", body, timeout, e);
     }
 }
