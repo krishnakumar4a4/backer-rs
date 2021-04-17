@@ -135,8 +135,12 @@ fn init_repo(repo_path: String, remote_url: Option<&str>) {
 fn add_all_changed(repo_path: &str, default_commit_msg: &str, sign_name: &str, sign_email: &str, should_push: bool, ssh_pkey: &str) {
     let mut repo = git::Repo::open(&repo_path);
     match git::add_all_and_commit(&mut repo, &default_commit_msg, &sign_name, &sign_email) {
-        Ok(oid) => {
+        Ok(oid) => { 
             trace!("Commit id {}",oid);
+            match git::pull(&mut repo, ssh_pkey) {
+                Ok(_) => trace!("Pull successful"),
+                Err(e) => error!("Pull failed {:?}", e),
+            }
             if should_push {
                 let callback = move |_url: &str, _uname: Option<&str>, _ctype: CredentialType| {
                     Cred::ssh_key("git", None, Path::new(ssh_pkey), None)
