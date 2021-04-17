@@ -3,7 +3,8 @@ extern crate notify;
 
 mod git;
 
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use std::path::PathBuf;
+use notify::{RecommendedWatcher, RecursiveMode, Watcher, DebouncedEvent};
 use std::sync::mpsc::{channel};
 use std::time::Duration;
 
@@ -191,7 +192,7 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
 
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
-    watcher.watch(&repo_path, RecursiveMode::NonRecursive)?;
+    watcher.watch(&repo_path, RecursiveMode::Recursive)?;
 
     let time_done = Arc::new(AtomicBool::new(false));
     let timer = timer::Timer::new();
@@ -205,18 +206,34 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
     let mut _guard: Option<Guard>  = None;
     loop {
         match rx.recv() {
-            Ok(event) => {
-                trace!("{:?}", event);
-                if ! time_done.load(Ordering::Relaxed) {
-                    //let time_done1 = time_done.clone();
-                    _guard = Some(timer.schedule_with_delay(chrono::Duration::seconds(commit_delay), callback.clone()));
-                    trace!("Commit timer started, will be committed in {} seconds", commit_delay);
-                    time_done.store(true, Ordering::Relaxed);
-                }
+            Ok(event) => match event {
+                DebouncedEvent::NoticeWrite(path)
+                | DebouncedEvent::NoticeRemove(path)
+                | DebouncedEvent::Create(path)
+                | DebouncedEvent::Write(path)
+                | DebouncedEvent::Chmod(path)
+                | DebouncedEvent::Remove(path) => {
+                    if !is_git_folder(path.clone()) && ! time_done.load(Ordering::Relaxed) {
+                        trace!("{:?}", path);
+                        _guard = Some(timer.schedule_with_delay(chrono::Duration::seconds(commit_delay), callback.clone()));
+                        trace!("Commit timer started, will be committed in {} seconds", commit_delay);
+                        time_done.store(true, Ordering::Relaxed);
+                    }
+                },
+                _ => {}
             },
             Err(e) => error!("watch error: {:?}", e),
         }
     }
+}
+
+fn is_git_folder(path: PathBuf) -> bool {
+    return path
+        .clone()
+        .into_os_string()
+        .into_string()
+        .unwrap()
+        .contains(".git");
 }
 
 fn show_desktop_notification(body: &str, timeout: notify_rust::Timeout) {
