@@ -116,6 +116,7 @@ fn init_repo(repo_path: String, remote_url: Option<&str>) {
     let repository = &repo.repo;
     match remote_url {
         Some(url) => {
+            // TODO: If remote already exists, respect it
             match repo.repo.remote("origin",url) {
                 Ok(_) => {
                     info!("Added remote {:?}", repo.repo.remotes().unwrap().get(0));
@@ -189,6 +190,7 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
     // You can also access each implementation directly e.g. INotifyWatcher.
     let mut watcher: RecommendedWatcher = Watcher::new(tx, Duration::from_secs(file_monitor_freq))?;
 
+    // TODO: It seems recursive mode is not working as expected, fix it
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
     watcher.watch(&repo_path, RecursiveMode::NonRecursive)?;
@@ -205,6 +207,7 @@ fn watch(config: BackerConfig) -> notify::Result<()> {
     let mut _guard: Option<Guard>  = None;
     loop {
         match rx.recv() {
+            // TODO: If more events are received before commit, reset timer?? This can be optional feature as well
             Ok(event) => {
                 trace!("{:?}", event);
                 if ! time_done.load(Ordering::Relaxed) {
